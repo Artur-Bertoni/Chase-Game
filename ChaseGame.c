@@ -50,19 +50,22 @@ void resetBoard(Tile Board[N][N], int NumberOfBlockedTiles) {
 	// generate some random blocked tiles
 	// ==>> why not switch it for a mazzle generator? ;-)
 	for (k = 0; k < NumberOfBlockedTiles; k++) {
-		line   = rand() % N;
-		column = rand() % N;
+		do {
+			line   = rand() % N;
+			column = rand() % N;
+		} while(line == 0 && column == 0);
+		
 		Board[line][column].Blocked = true;
 	}
 
 }
 
 int countDistanceBetweenPlayerAndNPC(Character* characterList) {
-	//NPC position
+	// NPC's position
 	int npcLine = characterList[0].Line;
 	int npcColumn = characterList[0].Column;
 
-	//Player position
+	// Player's position
 	int playerLine = characterList[1].Line;
 	int playerColumn = characterList[1].Column;
 
@@ -172,10 +175,32 @@ void gotoXY(int x, int y) {
 	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), c);
 }
 
+void npcMovement(Tile Board[N][N], Character* characterList) {
+	// NPC's position
+	int npcLine = characterList[0].Line;
+	int npcColumn = characterList[0].Column;
+
+	// Player's position
+	int playerLine = characterList[1].Line;
+	int playerColumn = characterList[1].Column;
+
+	// performing NPC's movement
+	if (npcLine > playerLine && Board[npcLine-1][npcColumn].Blocked != true) {
+		characterList[0].Line -= 1;
+	} else if (npcLine < playerLine && Board[npcLine+1][npcColumn].Blocked != true) {
+		characterList[0].Line += 1;
+	} else if (npcColumn > playerColumn && Board[npcLine][npcColumn-1].Blocked != true) {
+		characterList[0].Column -= 1;
+	} else if (npcColumn < playerColumn && Board[npcLine][npcColumn+1].Blocked != true) {
+		characterList[0].Column += 1;
+	}
+}
+
 void loopMaster(Tile Board[N][N], Character* characterList) {
 	do {
 		gotoXY(0,0);
 		displayBoard(Board, characterList, 2);
+		npcMovement(Board, characterList);
 		Sleep(1000);
 	} while(true);
 }
