@@ -87,7 +87,7 @@ int countDistanceBetweenPlayerAndNPC(Character* characterList) {
 	return (lineDistance + columnDistance) - 1;
 }
 
-void displayBoard(Tile Board[N][N], Character* characterList, int listNumber) {
+void displayBoard(Tile Board[N][N], Character* characterList, int listNumber, bool EndGame) {
 	int i, j;
 	char m1 = FreeCell, m2 = FreeCell, m3 = FreeCell; // space
 
@@ -128,7 +128,12 @@ void displayBoard(Tile Board[N][N], Character* characterList, int listNumber) {
 			for (k = 0; k < listNumber; k++) {
 				if (characterList[k].Line == i && characterList[k].Column == j) {
 					m1 = FreeCell;
-					m2 = (characterList[k].Type == NPC ? NPCCell : PlayerCell);
+					if ((characterList[k].Line == characterList[0].Line && characterList[k].Line == characterList[1].Line)
+					   && (characterList[k].Column == characterList[0].Column && characterList[k].Column == characterList[1].Column)) {
+						m2 = NPCCell;
+					} else {
+						m2 = (characterList[k].Type == NPC ? NPCCell : PlayerCell);
+					}
 					m3 = FreeCell;
 				}
 			}
@@ -164,7 +169,11 @@ void displayBoard(Tile Board[N][N], Character* characterList, int listNumber) {
 	}
 	printf("\n\n");
 
-	printf("Shorter distance between player and NPC: %d\n\n", countDistanceBetweenPlayerAndNPC(characterList));
+	if (!EndGame) {
+		printf("Distance between player and NPC: %.2d\n\n", countDistanceBetweenPlayerAndNPC(characterList));
+	} else {
+		printf("GAME OVER! You're dead!\n\n");
+	}
 }
 
 void gotoXY(int x, int y) {
@@ -175,7 +184,7 @@ void gotoXY(int x, int y) {
 	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), c);
 }
 
-void npcMovement(Tile Board[N][N], Character* characterList) {
+bool npcMovement(Tile Board[N][N], Character* characterList) {
 	// NPC's position
 	int npcLine = characterList[0].Line;
 	int npcColumn = characterList[0].Column;
@@ -185,24 +194,36 @@ void npcMovement(Tile Board[N][N], Character* characterList) {
 	int playerColumn = characterList[1].Column;
 
 	// performing NPC's movement
-	if (npcLine > playerLine && Board[npcLine-1][npcColumn].Blocked != true) {
+	if (npcLine > playerLine && Board[npcLine-1][npcColumn].Blocked == false) {
 		characterList[0].Line -= 1;
-	} else if (npcLine < playerLine && Board[npcLine+1][npcColumn].Blocked != true) {
+	} else if (npcLine < playerLine && Board[npcLine+1][npcColumn].Blocked == false) {
 		characterList[0].Line += 1;
-	} else if (npcColumn > playerColumn && Board[npcLine][npcColumn-1].Blocked != true) {
+	} else if (npcColumn > playerColumn && Board[npcLine][npcColumn-1].Blocked == false) {
 		characterList[0].Column -= 1;
-	} else if (npcColumn < playerColumn && Board[npcLine][npcColumn+1].Blocked != true) {
+	} else if (npcColumn < playerColumn && Board[npcLine][npcColumn+1].Blocked == false) {
 		characterList[0].Column += 1;
+	}
+
+	if (characterList[0].Line == characterList[1].Line && characterList[0].Column == characterList[1].Column) {
+		return true;
 	}
 }
 
 void loopMaster(Tile Board[N][N], Character* characterList) {
+	bool EndGame = false;
+	bool GameOver = false;
+
 	do {
-		gotoXY(0,0);
-		displayBoard(Board, characterList, 2);
-		npcMovement(Board, characterList);
+		EndGame = GameOver == true ? true : false;
+
+		if (!EndGame) gotoXY(0,0);
+		else system("cls");
+
+		displayBoard(Board, characterList, 2, EndGame);
+		GameOver = npcMovement(Board, characterList);
+
 		Sleep(1000);
-	} while(true);
+	} while(!EndGame);
 }
 
 int main() {
