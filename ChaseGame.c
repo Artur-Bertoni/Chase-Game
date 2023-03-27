@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <Windows.h>
+#include <winuser.h>
 
 #define N            10
 #define BlockedCell 178
@@ -36,8 +37,16 @@ typedef struct _character {
 	int Stamina;
 } Character;
 
-void resetBoard(Tile Board[N][N], int NumberOfBlockedTiles) {
+void resetBoard(Tile Board[N][N], int NumberOfBlockedTiles, Character* characterList) {
 	int line, column, k;
+
+	// NPC's position
+	int npcLine = characterList[0].Line;
+	int npcColumn = characterList[0].Column;
+
+	// Player's position
+	int playerLine = characterList[1].Line;
+	int playerColumn = characterList[1].Column;
 
 	// reset all tiles
 	for (line = 0; line < N; line++) {
@@ -53,7 +62,7 @@ void resetBoard(Tile Board[N][N], int NumberOfBlockedTiles) {
 		do {
 			line   = rand() % N;
 			column = rand() % N;
-		} while(line == 0 && column == 0);
+		} while((line == 0 && column == 0) || (line == playerLine && column == playerColumn) || (line == npcLine && column == npcColumn));
 		
 		Board[line][column].Blocked = true;
 	}
@@ -84,12 +93,14 @@ int countDistanceBetweenPlayerAndNPC(Character* characterList) {
 		columnDistance = playerColumn - npcColumn;
 	}
 
-	return (lineDistance + columnDistance) - 1;
+	return lineDistance + columnDistance;
 }
 
 void displayBoard(Tile Board[N][N], Character* characterList, int listNumber, bool EndGame) {
 	int i, j;
 	char m1 = FreeCell, m2 = FreeCell, m3 = FreeCell; // space
+
+	if (EndGame) system("cls");
 
 	// top border
 	for (j = 0; j < N; j++) {
@@ -194,24 +205,55 @@ bool npcMovement(Tile Board[N][N], Character* characterList) {
 	int playerColumn = characterList[1].Column;
 
 	// performing NPC's movement
-	if (npcLine > playerLine && Board[npcLine-1][npcColumn].Blocked == false) {
+	if (npcLine > playerLine && Board[npcLine-1][npcColumn].Blocked == false && abs(npcLine - 1) < N && (npcLine - 1) >= 0) { //UP
 		characterList[0].Line -= 1;
-	} else if (npcLine < playerLine && Board[npcLine+1][npcColumn].Blocked == false) {
+	} else if (npcLine < playerLine && Board[npcLine+1][npcColumn].Blocked == false && abs(npcLine + 1) < N) { //DOWN
 		characterList[0].Line += 1;
-	} else if (npcColumn > playerColumn && Board[npcLine][npcColumn-1].Blocked == false) {
+	} else if (npcColumn > playerColumn && Board[npcLine][npcColumn-1].Blocked == false && abs(npcColumn - 1) < N && (npcColumn - 1) >= 0) { //LEFT
 		characterList[0].Column -= 1;
-	} else if (npcColumn < playerColumn && Board[npcLine][npcColumn+1].Blocked == false) {
+	} else if (npcColumn < playerColumn && Board[npcLine][npcColumn+1].Blocked == false && abs(npcColumn + 1) < N) { //RIGHT
 		characterList[0].Column += 1;
 	}
 
-	if (characterList[0].Line == characterList[1].Line && characterList[0].Column == characterList[1].Column) {
+	if (characterList[0].Line == characterList[1].Line && characterList[0].Column == characterList[1].Column)
 		return true;
+	else
+		return false;
+}
+
+void playerMovement(Tile Board[N][N], Character* characterList) {
+	fflush(stdin);
+
+	// NPC's position
+	int npcLine = characterList[0].Line;
+	int npcColumn = characterList[0].Column;
+
+	// Player's position
+	int playerLine = characterList[1].Line;
+	int playerColumn = characterList[1].Column;
+
+	if (GetAsyncKeyState (VK_UP)&1) { // UP
+		if (Board[playerLine-1][playerColumn].Blocked == false && !((playerLine - 1) == npcLine && playerColumn == npcColumn) && abs(playerLine - 1) < N && (playerLine - 1) >= 0)
+				characterList[1].Line -= 1;
+	} else if (GetAsyncKeyState (VK_DOWN)&1) { // DOWN
+		if (Board[playerLine+1][playerColumn].Blocked == false && !((playerLine + 1) == npcLine && playerColumn == npcColumn) && abs(playerLine + 1) < N)
+				characterList[1].Line += 1;
+	} else if (GetAsyncKeyState (VK_LEFT)&1) { // LEFT
+		if (Board[playerLine][playerColumn-1].Blocked == false && !(playerLine == npcLine && (playerColumn - 1) == npcColumn) && abs(playerColumn - 1) < N && (playerColumn - 1) >= 0)
+				characterList[1].Column -= 1;
+	} else if (GetAsyncKeyState (VK_RIGHT)&1) { // RIGHT
+		if (Board[playerLine][playerColumn+1].Blocked == false && !(playerLine == npcLine && (playerColumn + 1) == npcColumn) && abs(playerColumn + 1) < N)
+				characterList[1].Column += 1;
 	}
+	
+	fflush(stdin);
 }
 
 void loopMaster(Tile Board[N][N], Character* characterList) {
 	bool EndGame = false;
 	bool GameOver = false;
+
+	system("cls");
 
 	do {
 		EndGame = GameOver == true ? true : false;
@@ -220,9 +262,9 @@ void loopMaster(Tile Board[N][N], Character* characterList) {
 		else system("cls");
 
 		displayBoard(Board, characterList, 2, EndGame);
-		GameOver = npcMovement(Board, characterList);
-
+		playerMovement(Board, characterList);
 		Sleep(1000);
+		GameOver = npcMovement(Board, characterList);
 	} while(!EndGame);
 }
 
@@ -257,7 +299,7 @@ int main() {
 	} while (characterList[1].Line == characterList[0].Line
 			&& characterList[1].Column == characterList[0].Column);
 
-	resetBoard(Board, 15);
+	resetBoard(Board, 15, characterList);
 	loopMaster(Board, characterList);
 
 	return (0);
