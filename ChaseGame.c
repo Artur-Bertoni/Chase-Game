@@ -232,16 +232,16 @@ void playerMovement(Tile Board[N][N], Character* characterList) {
 	int playerLine = characterList[1].Line;
 	int playerColumn = characterList[1].Column;
 
-	if (GetAsyncKeyState (VK_UP)&1) { // UP
+	if (GetAsyncKeyState (VK_UP)&1 || GetAsyncKeyState(0x57)) { // UP
 		if (Board[playerLine-1][playerColumn].Blocked == false && !((playerLine - 1) == npcLine && playerColumn == npcColumn) && abs(playerLine - 1) < N && (playerLine - 1) >= 0)
 				characterList[1].Line -= 1;
-	} else if (GetAsyncKeyState (VK_DOWN)&1) { // DOWN
+	} else if (GetAsyncKeyState (VK_DOWN)&1 || GetAsyncKeyState(0x53)) { // DOWN
 		if (Board[playerLine+1][playerColumn].Blocked == false && !((playerLine + 1) == npcLine && playerColumn == npcColumn) && abs(playerLine + 1) < N)
 				characterList[1].Line += 1;
-	} else if (GetAsyncKeyState (VK_LEFT)&1) { // LEFT
+	} else if (GetAsyncKeyState (VK_LEFT)&1 || GetAsyncKeyState(0x41)) { // LEFT
 		if (Board[playerLine][playerColumn-1].Blocked == false && !(playerLine == npcLine && (playerColumn - 1) == npcColumn) && abs(playerColumn - 1) < N && (playerColumn - 1) >= 0)
 				characterList[1].Column -= 1;
-	} else if (GetAsyncKeyState (VK_RIGHT)&1) { // RIGHT
+	} else if (GetAsyncKeyState (VK_RIGHT)&1 || GetAsyncKeyState(0x44)) { // RIGHT
 		if (Board[playerLine][playerColumn+1].Blocked == false && !(playerLine == npcLine && (playerColumn + 1) == npcColumn) && abs(playerColumn + 1) < N)
 				characterList[1].Column += 1;
 	}
@@ -252,6 +252,7 @@ void playerMovement(Tile Board[N][N], Character* characterList) {
 void loopMaster(Tile Board[N][N], Character* characterList) {
 	bool EndGame = false;
 	bool GameOver = false;
+	int countToNPCMovement = 0;
 
 	system("cls");
 
@@ -263,8 +264,11 @@ void loopMaster(Tile Board[N][N], Character* characterList) {
 
 		displayBoard(Board, characterList, 2, EndGame);
 		playerMovement(Board, characterList);
-		Sleep(1000);
-		GameOver = npcMovement(Board, characterList);
+
+		if (countToNPCMovement == 70) {
+			GameOver = npcMovement(Board, characterList);
+			countToNPCMovement = 0;
+		} else countToNPCMovement++;
 	} while(!EndGame);
 }
 
