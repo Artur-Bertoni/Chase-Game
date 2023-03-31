@@ -19,7 +19,7 @@
 #define BlockedCell 178
 #define FreeCell     32
 #define DumbNPCCell 184
-#define SmartNPCCell  64
+#define SmartNPCCell 64
 #define PlayerCell  190
 
 typedef struct _tile {
@@ -38,7 +38,19 @@ typedef struct _character {
 	int Stamina;
 } Character;
 
-bool pathFinderUtil(Tile Board[N][N], int x, int y, Tile solution[N][N], Character* characterList);
+typedef struct {
+    int x, y;
+} Node;
+
+typedef struct {
+    Node node;
+    int distance;
+} QueueNode;
+
+typedef struct {
+    QueueNode nodes[N*N];
+    int size;
+} PriorityQueue;
 
 void resetBoard(Tile Board[N][N], int NumberOfBlockedTiles, Character* characterList) {
 	int line, column, k;
@@ -248,13 +260,123 @@ bool dumbNpcMovement(Tile Board[N][N], Character* characterList) {
 	} else return false;
 }
 
-bool isValid(int x, int y) {
-	// if (x, y outside maze) return false
-    if (x >= 0 && x < N && y >= 0 && y < N)
-        return true;
- 
-    return false;
+bool isValid(Tile Board[N][N], int x, int y) {
+    return (x >= 0 && x < N && y >= 0 && y < N && !Board[x][y].Blocked);
 }
+
+bool dijkstra(Tile Board[N][N], Node start, Node end, Tile solution[N][N]) {
+    int dist[N][N], i, j;
+    bool visited[N][N];
+
+    for (i = 0; i < N; i++) {
+        for (j = 0; j < N; j++) {
+            dist[i][j] = INT_MAX;
+            visited[i][j] = false;
+            solution[i][j].Blocked = true;
+        }
+    }
+
+    dist[start.x][start.y] = 0;
+
+    PriorityQueue pq;
+    pq.size = 0;
+
+    QueueNode startNode = {start, 0};
+    pq.nodes[pq.size++] = startNode;
+
+    while (pq.size > 0) {
+        QueueNode node = pq.nodes[0];
+
+        pq.nodes[0] = pq.nodes[--pq.size];
+
+        int parentIndex = 0;
+        int childIndex = 1;
+
+        while (childIndex < pq.size) {
+            if (childIndex + 1 < pq.size && pq.nodes[childIndex + 1].distance < pq.nodes[childIndex].distance) {
+                childIndex++;
+            }
+
+            if (pq.nodes[childIndex].distance < pq.nodes[parentIndex].distance) {
+                QueueNode tmp = pq.nodes[parentIndex];
+                pq.nodes[parentIndex] = pq.nodes[childIndex];
+                pq.nodes[childIndex] = tmp;
+                parentIndex = childIndex;
+                childIndex = parentIndex * 2 + 1;
+            } else {
+                break;
+            }
+        }
+
+        int x = node.node.x;
+        int y = node.node.y;
+
+        visited[x][y] = true;
+
+        if (x == end.x && y == end.y) {
+            return true;
+        }
+
+        if (dist[x][y] < node.distance) {
+            continue;
+        }
+
+        if (isValid(Board, x - 1, y)) {
+            if (!visited[x - 1][y]) {
+                int alt = dist[x][y] + 1;
+
+                if (alt < dist[x - 1][y]) {
+                    dist[x - 1][y] = alt;
+
+                    QueueNode newNode = {{x - 1, y}, alt};
+                    pq.nodes[pq.size++] = newNode;
+                }
+            }
+        }
+		
+		if (isValid(Board, x + 1, y)) {
+		    if (!visited[x + 1][y]) {
+		        int alt = dist[x][y] + 1;
+		
+		        if (alt < dist[x + 1][y]) {
+		            dist[x + 1][y] = alt;
+		
+		            QueueNode newNode = {{x + 1, y}, alt};
+		            pq.nodes[pq.size++] = newNode;
+		        }
+		    }
+		}
+		
+		if (isValid(Board, x, y - 1)) {
+		    if (!visited[x][y - 1]) {
+		        int alt = dist[x][y] + 1;
+		
+		        if (alt < dist[x][y - 1]) {
+		            dist[x][y - 1] = alt;
+		
+		            QueueNode newNode = {{x, y - 1}, alt};
+		            pq.nodes[pq.size++] = newNode;
+		        }
+		    }
+		}
+	
+		if (isValid(Board, x, y + 1)) {
+		    if (!visited[x][y + 1]) {
+		        int alt = dist[x][y] + 1;
+		
+		        if (alt < dist[x][y + 1]) {
+		            dist[x][y + 1] = alt;
+		
+		            QueueNode newNode = {{x, y + 1}, alt};
+		            pq.nodes[pq.size++] = newNode;
+		        }
+		    }
+		}
+		
+		return false;
+	}
+}
+
  
 Tile** pathFinder(Tile Board[N][N], Tile solution[N][N], Character* characterList) {
 	int line, column;
@@ -262,69 +384,24 @@ Tile** pathFinder(Tile Board[N][N], Tile solution[N][N], Character* characterLis
 	// Smart NPC's position
 	int smartNpcLine = characterList[2].Line;
 	int smartNpcColumn = characterList[2].Column;
+	
+	// Player's position
+	int playerLine = characterList[1].Line;
+	int playerColumn = characterList[1].Column;
 
 	for (line = 0; line < N; line++)
 		for (column = 0; column < N; column++)
 			solution[line][column].Blocked = true;
- 
-    if (pathFinderUtil(Board, smartNpcLine, smartNpcColumn, solution, characterList) == false) 
+			
+	Node start = {smartNpcLine, smartNpcColumn};
+	Node end = {playerLine,playerColumn};
+	
+    if (dijkstra(Board, start, end, solution) == false) 
 		return NULL;
 
     return solution;
 }
  
-bool pathFinderUtil(Tile Board[N][N], int x, int y, Tile solution[N][N], Character* characterList) {
-	// Player's position
-	int playerLine = characterList[1].Line;
-	int playerColumn = characterList[1].Column;
-
-	// Smart NPC's position
-	int smartNpcLine = characterList[2].Line;
-	int smartNpcColumn = characterList[2].Column;
-
-
-    // if (x, y is the player)
-    if (x == playerLine && y == playerColumn) {
-        solution[x][y].Blocked = false;
-		solution[x][y].Visible = true;
-        return true;
-    }
- 
-    // Check if Board[x][y] is valid
-    if (isValid(x, y) == true) {
-        // mark x, y as part of solution path
-        solution[x][y].Blocked = false;
-		solution[x][y].Visible = true;
- 
-		if (playerLine > smartNpcLine) {
-			if (pathFinderUtil(Board, x + 1, y, solution, characterList) == true)
-				return true;
-		}
-		if (playerLine < smartNpcLine) {
-			if (pathFinderUtil(Board, x - 1, y, solution, characterList) == true)
-				return true;
-		}
-		if (playerColumn > smartNpcColumn) {
-			if (pathFinderUtil(Board, x, y + 1, solution, characterList) == true)
-				return true;
-		}
-		if (playerColumn < smartNpcColumn) {
-			if (pathFinderUtil(Board, x, y - 1, solution, characterList) == true)
-				return true;
-		}
-
- 
-        /* If none of the above movements work then BACKTRACK:
-         * unmark x, y as part of solution path
-		 */
-        solution[x][y].Blocked = true;
-		solution[x][y].Visible = false;
-        return false;
-    }
- 
-    return false;
-}
-
 bool smartNpcMovement(Tile Board[N][N], Character* characterList, Tile solution[N][N]) {
 	// Smart NPC's position
 	int smartNpcLine = characterList[2].Line;
@@ -342,7 +419,10 @@ bool smartNpcMovement(Tile Board[N][N], Character* characterList, Tile solution[
 		characterList[2].Column -= 1;
 	} else if (smartNpcColumn < N-1 && solution[smartNpcLine][smartNpcColumn+1].Blocked == false && Board[smartNpcLine][smartNpcColumn+1].Blocked == false) {
 		characterList[2].Column += 1;
-	} 
+	}
+	
+	gotoXY(0,30);
+	displayBoard(solution, characterList, 3, false);
 	
 	// checking if NPC caught the player
 	if (characterList[2].Line == characterList[1].Line && characterList[2].Column == characterList[1].Column) {
@@ -417,12 +497,12 @@ void loopMaster(Tile Board[N][N], Character* characterList) {
 		displayBoard(Board, characterList, 3, EndGame);
 		playerMovement(Board, characterList);
 
-		if (countToSmartNPCMovement == 50) {
+		if (countToSmartNPCMovement == 10) {
 			GameOver = smartNpcMovement(Board, characterList, solution);
 			countToSmartNPCMovement = 0;
 		} else countToSmartNPCMovement++;
-
-		if (countToDumbNPCMovement == 80) {
+		
+		if (countToDumbNPCMovement == 50) {
 			GameOver = dumbNpcMovement(Board, characterList);
 			countToDumbNPCMovement = 0;
 		} else countToDumbNPCMovement++;
